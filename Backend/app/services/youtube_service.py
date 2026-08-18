@@ -20,6 +20,26 @@ def get_video(video_id: str):
     return response
 
 
+def get_comment_count(video_id: str) -> int:
+    """
+    Get the total number of comments for a YouTube video.
+    """
+
+    response = youtube.videos().list(
+        part="statistics",
+        id=video_id,
+    ).execute()
+
+    items = response.get("items", [])
+
+    if not items:
+        return 0
+
+    statistics = items[0].get("statistics", {})
+
+    return int(statistics.get("commentCount", 0))
+
+
 def get_comments(
     video_id: str,
     max_comments: int = 500,
