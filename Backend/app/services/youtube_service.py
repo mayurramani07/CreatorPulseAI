@@ -10,6 +10,7 @@ youtube = build(
     developerKey=YOUTUBE_API_KEY,
 )
 
+
 def get_video(video_id: str):
     response = youtube.videos().list(
         part="snippet,statistics",
@@ -18,19 +19,20 @@ def get_video(video_id: str):
 
     return response
 
-# def get_comments(video_id: str, max_results: int = 100):
-#     response = youtube.commentThreads().list(
-#         part="snippet",
-#         videoId=video_id,
-#         maxResults=max_results,
-#         textFormat="plainText",
-#     ).execute()
 
-#     return response
 def get_comments(
     video_id: str,
     max_comments: int = 500,
 ) -> list[Comment]:
+    """
+    Collect top-level YouTube comments using pagination.
+
+    YouTube returns a maximum of 100 comment threads per API request.
+    This function keeps requesting pages until:
+
+    1. max_comments is reached, or
+    2. YouTube has no more pages.
+    """
 
     comments: list[Comment] = []
     next_page_token = None
@@ -48,8 +50,15 @@ def get_comments(
             pageToken=next_page_token,
         ).execute()
 
-        for item in response.get("items", []):
-            comments.append(parse_comment(item))
+        items = response.get("items", [])
+
+        if not items:
+            break
+
+        for item in items:
+            comment = parse_comment(item)
+
+            comments.append(comment)
 
             if len(comments) >= max_comments:
                 break
@@ -61,7 +70,12 @@ def get_comments(
 
     return comments
 
+
 def parse_comment(item: dict) -> Comment:
+    """
+    Convert a YouTube comment thread into our Comment model.
+    """
+
     thread_snippet = item["snippet"]
     comment_snippet = thread_snippet["topLevelComment"]["snippet"]
 
