@@ -14,6 +14,9 @@ from app.services.sampling_service import (
 from app.services.preprocessing_service import (
     preprocess_comments,
 )
+from app.services.request_detector import (
+    detect_content_requests,
+)
 
 
 app = FastAPI(title="CreatorPulse AI")
@@ -33,6 +36,37 @@ async def read_video(video_id: str):
 def get_video_comments(video_id: str):
     return get_comments(video_id)
 
+
+# @app.get("/videos/{video_id}/sample-comments")
+# def get_sample_comments(video_id: str):
+
+#     total_comments = get_comment_count(video_id)
+
+#     collection_limit = determine_sample_size(
+#         total_comments
+#     )
+
+#     comments = get_comments(
+#         video_id,
+#         max_comments=collection_limit,
+#     )
+
+#     sampled_comments = build_sample(
+#         comments,
+#         sample_size=collection_limit,
+#     )
+
+#     processed_comments = preprocess_comments(
+#         sampled_comments
+#     )
+
+#     return {
+#         "total_available": total_comments,
+#         "total_collected": len(comments),
+#         "sample_size": len(sampled_comments),
+#         "processed_comments": len(processed_comments),
+#         "comments": processed_comments,
+#     }
 
 @app.get("/videos/{video_id}/sample-comments")
 def get_sample_comments(video_id: str):
@@ -57,12 +91,17 @@ def get_sample_comments(video_id: str):
         sampled_comments
     )
 
+    request_comments = detect_content_requests(
+        processed_comments
+    )
+
     return {
         "total_available": total_comments,
         "total_collected": len(comments),
         "sample_size": len(sampled_comments),
         "processed_comments": len(processed_comments),
-        "comments": processed_comments,
+        "content_request_candidates": len(request_comments),
+        "comments": request_comments,
     }
 
 
