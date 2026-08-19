@@ -1,3 +1,29 @@
+def calculate_topic_signals(
+    topic_comments: list[dict],
+) -> dict:
+    """
+    Calculate raw demand signals for one topic.
+    """
+
+    request_count = len(topic_comments)
+
+    total_likes = sum(
+        comment.get("like_count", 0)
+        for comment in topic_comments
+    )
+
+    total_replies = sum(
+        comment.get("reply_count", 0)
+        for comment in topic_comments
+    )
+
+    return {
+        "request_count": request_count,
+        "total_likes": total_likes,
+        "total_replies": total_replies,
+    }
+
+
 def normalize(
     value: float,
     maximum: float,
@@ -12,76 +38,96 @@ def normalize(
     return value / maximum
 
 
-def calculate_topic_demand(
-    topic_comments: list[dict],
-    max_request_count: int,
-    max_likes: int,
-    max_replies: int,
-) -> dict:
+def calculate_demand_scores(
+    topic_groups: dict[str, list[dict]],
+) -> list[dict]:
     """
-    Calculate normalized demand signals for a topic.
+    Calculate demand scores for all topic groups.
 
-    Signals:
-    - request frequency
-    - total likes
-    - total replies
-
-    Final weighting:
+    Weighting:
     - 50% request frequency
     - 35% likes
     - 15% replies
     """
 
-    if not topic_comments:
-        return {
-            "request_count": 0,
-            "total_likes": 0,
-            "total_replies": 0,
-            "request_score": 0.0,
-            "like_score": 0.0,
-            "reply_score": 0.0,
-            "demand_score": 0.0,
-        }
+    if not topic_groups:
+        return []
 
-    request_count = len(topic_comments)
+    topic_signals = {}
 
-    total_likes = sum(
-        comment.get("like_count", 0)
-        for comment in topic_comments
+    for topic, comments in topic_groups.items():
+
+        topic_signals[topic] = calculate_topic_signals(
+            comments
+        )
+
+
+    max_request_count = max(
+        signals["request_count"]
+        for signals in topic_signals.values()
     )
 
-    total_replies = sum(
-        comment.get("reply_count", 0)
-        for comment in topic_comments
+    max_likes = max(
+        signals["total_likes"]
+        for signals in topic_signals.values()
     )
 
-    request_score = normalize(
-        request_count,
-        max_request_count,
+    max_replies = max(
+        signals["total_replies"]
+        for signals in topic_signals.values()
     )
 
-    like_score = normalize(
-        total_likes,
-        max_likes,
-    )
+    results = []
 
-    reply_score = normalize(
-        total_replies,
-        max_replies,
-    )
+    for topic, signals in topic_signals.items():
 
-    demand_score = (
-        request_score * 0.50
-        + like_score * 0.35
-        + reply_score * 0.15
-    )
+        request_score = normalize(
+            signals["request_count"],
+            max_request_count,
+        )
 
-    return {
-        "request_count": request_count,
-        "total_likes": total_likes,
-        "total_replies": total_replies,
-        "request_score": round(request_score, 4),
-        "like_score": round(like_score, 4),
-        "reply_score": round(reply_score, 4),
-        "demand_score": round(demand_score, 4),
-    }
+        like_score = normalize(
+            signals["total_likes"],
+            max_likes,
+        )
+
+        reply_score = normalize(
+            signals["total_replies"],
+            max_replies,
+        )
+
+        demand_score = (
+            request_score * 0.50
+            + like_score * 0.35
+            + reply_score * 0.15
+        )
+
+        results.append(
+            {
+                "topic": topic,
+                "request_count": signals["request_count"],
+                "total_likes": signals["total_likes"],
+                "total_replies": signals["total_replies"],
+                "request_score": round(
+                    request_score,
+                    4,
+                ),
+                "like_score": round(
+                    like_score,
+                    4,
+                ),
+                "reply_score": round(
+                    reply_score,
+                    4,
+                ),
+                "demand_score": round(
+                    demand_score,
+                    4,
+                ),
+            }
+        )
+    results.sort(
+        key=lambda item: item["demand_score"],
+        reverse=True,
+    )
+    return results
