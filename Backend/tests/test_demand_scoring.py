@@ -36,17 +36,30 @@ cicd_comments = [
 ]
 
 
+max_request_count = 3
+max_likes = 34
+max_replies = 3
+
+
 aws_score = calculate_topic_demand(
-    aws_comments
+    aws_comments,
+    max_request_count,
+    max_likes,
+    max_replies,
 )
 
+
 cicd_score = calculate_topic_demand(
-    cicd_comments
+    cicd_comments,
+    max_request_count,
+    max_likes,
+    max_replies,
 )
 
 
 print("\nAWS")
 print(aws_score)
+
 
 print("\nCI/CD")
 print(cicd_score)
