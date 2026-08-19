@@ -1,60 +1,6 @@
-import re
-
 import numpy as np
 
 from app.services.embedding_service import generate_embeddings
-
-
-STOP_WORDS = {
-    "the",
-    "a",
-    "an",
-    "and",
-    "or",
-    "to",
-    "for",
-    "of",
-    "in",
-    "on",
-    "is",
-    "are",
-    "can",
-    "you",
-    "please",
-    "make",
-    "want",
-    "need",
-    "from",
-    "this",
-    "that",
-    "with",
-    "your",
-    "my",
-    "i",
-    "we",
-    "me",
-    "it",
-    "bring",
-    "give",
-    "get",
-    "would",
-    "could",
-    "should",
-    "course",
-    "courses",
-    "tutorial",
-    "tutorials",
-    "video",
-    "videos",
-    "teach",
-    "teaching",
-    "learn",
-    "learning",
-    "explain",
-    "explaining",
-    "full",
-    "complete",
-}
 
 
 def cosine_similarity(
@@ -81,111 +27,240 @@ def get_representative_comment(
     comments: list[dict],
 ) -> dict | None:
     """
-    Find the comment that is most representative
-    of the entire topic group.
-
-    The representative comment is the comment
-    closest to the average embedding of the group.
+    Return the comment closest to the semantic
+    center of the topic group.
     """
 
     if not comments:
         return None
 
-    texts = [
-        comment.get("text", "")
+    valid_comments = [
+        comment
         for comment in comments
+        if comment.get("text", "").strip()
     ]
 
-    embeddings = generate_embeddings(texts)
+    if not valid_comments:
+        return None
+
+    texts = [
+        comment["text"]
+        for comment in valid_comments
+    ]
+
+    embeddings = generate_embeddings(
+        texts
+    )
 
     group_embedding = np.mean(
         embeddings,
         axis=0,
     )
 
-    best_index = 0
-    best_similarity = -1.0
-
-    for index, embedding in enumerate(embeddings):
-
-        similarity = cosine_similarity(
+    similarities = [
+        cosine_similarity(
             embedding,
             group_embedding,
         )
+        for embedding in embeddings
+    ]
 
-        if similarity > best_similarity:
-            best_similarity = similarity
-            best_index = index
-
-    return comments[best_index]
-
-
-def extract_topic_phrase(
-    text: str,
-) -> str:
-    """
-    Extract meaningful topic words from a
-    representative comment.
-    """
-
-    if not text:
-        return "Unknown"
-
-    text = text.lower()
-
-    # Preserve common technical compound terms.
-    text = text.replace("ci/cd", "cicd")
-    text = text.replace("ci-cd", "cicd")
-
-    words = re.findall(
-        r"[a-zA-Z0-9+#]+",
-        text,
+    best_index = int(
+        np.argmax(similarities)
     )
 
-    topic_words = []
+    return valid_comments[
+        best_index
+    ]
 
-    for word in words:
 
-        if word in STOP_WORDS:
-            continue
+def _generate_phrase_candidates(
+    text: str,
+) -> list[str]:
+    """
+    Generate candidate phrases without using
+    topic-specific words or stop-word rules.
 
-        if len(word) < 2:
-            continue
+    The semantic model decides which candidate
+    represents the topic.
+    """
 
-        topic_words.append(word)
+    words = text.split()
 
-    if not topic_words:
-        return "General Topic"
+    candidates = []
 
-    label = " ".join(
-        topic_words[:3]
-    ).upper()
+    # Keep original meaningful phrases.
+    for size in (1, 2, 3):
 
-    # Restore human-readable formatting.
-    if label == "CICD":
-        return "CI/CD"
+        for index in range(
+            len(words) - size + 1
+        ):
 
-    return label
+            phrase = " ".join(
+                words[
+                    index:index + size
+                ]
+            ).strip(
+                ".,!?;:\"'()[]{}"
+            )
+
+            if phrase:
+                candidates.append(
+                    phrase
+                )
+
+    return list(
+        dict.fromkeys(
+            candidates
+        )
+    )
 
 
 def get_topic_label(
     comments: list[dict],
 ) -> str:
     """
-    Generate a topic label using the
-    representative comment.
+    Generate a semantic topic label.
+
+    No hardcoded topic names.
+    No stop-word filtering.
+    No AWS/RAG/CI-CD specific rules.
     """
 
-    representative_comment = (
-        get_representative_comment(comments)
-    )
-
-    if not representative_comment:
+    if not comments:
         return "Unknown"
 
-    return extract_topic_phrase(
-        representative_comment.get(
-            "text",
-            "",
+    valid_comments = [
+        comment
+        for comment in comments
+        if comment.get("text", "").strip()
+    ]
+
+    if not valid_comments:
+        return "Unknown"
+
+    texts = [
+        comment["text"]
+        for comment in valid_comments
+    ]
+
+    # ---------------------------------------------------------
+    # 1. Generate embeddings for complete comments
+    # ---------------------------------------------------------
+
+    comment_embeddings = generate_embeddings(
+        texts
+    )
+
+    group_embedding = np.mean(
+        comment_embeddings,
+        axis=0,
+    )
+
+    # ---------------------------------------------------------
+    # 2. Generate candidate phrases
+    # ---------------------------------------------------------
+
+    candidates = []
+
+    for text in texts:
+
+        candidates.extend(
+            _generate_phrase_candidates(
+                text
+            )
+        )
+
+    candidates = list(
+        dict.fromkeys(
+            candidates
         )
     )
+
+    if not candidates:
+        return "Unknown"
+
+    # ---------------------------------------------------------
+    # 3. Embed candidate phrases
+    # ---------------------------------------------------------
+
+    candidate_embeddings = (
+        generate_embeddings(
+            candidates
+        )
+    )
+
+    # ---------------------------------------------------------
+    # 4. Semantic ranking
+    # ---------------------------------------------------------
+
+    scored_candidates = []
+
+    for phrase, embedding in zip(
+        candidates,
+        candidate_embeddings,
+    ):
+
+        similarity = cosine_similarity(
+            embedding,
+            group_embedding,
+        )
+
+        scored_candidates.append(
+            {
+                "phrase": phrase,
+                "similarity": similarity,
+            }
+        )
+
+    scored_candidates.sort(
+        key=lambda item: item[
+            "similarity"
+        ],
+        reverse=True,
+    )
+
+    # ---------------------------------------------------------
+    # 5. Prefer concise semantic concepts
+    # ---------------------------------------------------------
+
+    best_phrase = None
+    best_score = -1.0
+
+    for item in scored_candidates:
+
+        phrase = item["phrase"]
+        similarity = item["similarity"]
+
+        word_count = len(
+            phrase.split()
+        )
+
+        # Avoid selecting the entire sentence.
+        if word_count > 4:
+            continue
+
+        # Slight preference for 1-3 word concepts.
+        if word_count == 1:
+            score = similarity
+
+        elif word_count == 2:
+            score = similarity + 0.015
+
+        elif word_count == 3:
+            score = similarity + 0.01
+
+        else:
+            score = similarity - 0.01
+
+        if score > best_score:
+
+            best_score = score
+            best_phrase = phrase
+
+    if not best_phrase:
+        best_phrase = scored_candidates[0][
+            "phrase"
+        ]
+
+    return best_phrase.upper()
