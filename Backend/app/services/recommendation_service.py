@@ -2,69 +2,19 @@ from app.services.demand_scoring_service import (
     calculate_demand_scores,
 )
 
-from app.services.topic_labeling_service import (
-    get_representative_comment,
-    get_topic_label,
-)
-
 
 def build_topic_recommendations(
-    topic_groups,
+    topic_groups: dict[str, list[dict]],
 ) -> list[dict]:
     """
-    Build ranked topic recommendations.
+    Build final ranked recommendations from
+    LLM-generated semantic topic groups.
 
-    Supports both:
-
-    1. Existing topic grouping output:
-       [
-           [comment, comment],
-           [comment, comment],
-       ]
-
-    2. Dictionary-based test input:
-       {
-           "aws_group": [comment, comment],
-           "cicd_group": [comment, comment],
-       }
+    Topic discovery is handled by the LLM.
+    Demand scoring is handled by Python.
     """
 
     if not topic_groups:
-        return []
-
-    # ---------------------------------------------------------
-    # Normalize input into:
-    #
-    # {
-    #     "group_1": [...],
-    #     "group_2": [...],
-    # }
-    # ---------------------------------------------------------
-
-    if isinstance(topic_groups, list):
-
-        grouped_comments = {
-            f"group_{index + 1}": comments
-            for index, comments in enumerate(
-                topic_groups
-            )
-            if comments
-        }
-
-    elif isinstance(topic_groups, dict):
-
-        grouped_comments = {
-            topic: comments
-            for topic, comments in topic_groups.items()
-            if comments
-        }
-
-    else:
-        raise TypeError(
-            "topic_groups must be a list or dictionary"
-        )
-
-    if not grouped_comments:
         return []
 
     # ---------------------------------------------------------
@@ -72,44 +22,51 @@ def build_topic_recommendations(
     # ---------------------------------------------------------
 
     demand_results = calculate_demand_scores(
-        grouped_comments
+        topic_groups
     )
 
     recommendations = []
 
     # ---------------------------------------------------------
-    # Build final recommendation objects
+    # Build recommendations
     # ---------------------------------------------------------
 
     for result in demand_results:
 
-        group_key = result["topic"]
+        topic = result["topic"]
 
-        comments = grouped_comments[
-            group_key
-        ]
-
-        representative_comment = (
-            get_representative_comment(
-                comments
-            )
+        comments = topic_groups.get(
+            topic,
+            [],
         )
 
-        topic_label = get_topic_label(
-            comments
+        if not comments:
+            continue
+
+        # Choose the highest-engagement comment
+        representative_comment = max(
+            comments,
+            key=lambda comment: (
+                comment.get(
+                    "like_count",
+                    0,
+                ),
+                comment.get(
+                    "reply_count",
+                    0,
+                ),
+            ),
         )
 
         recommendations.append(
             {
-                "topic": topic_label,
+                "topic": topic,
 
                 "representative_comment": (
                     representative_comment.get(
                         "text",
                         "",
                     )
-                    if representative_comment
-                    else ""
                 ),
 
                 "request_count": result[
