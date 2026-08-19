@@ -18,10 +18,10 @@ aws_comments = [
 
 cicd_comments = [
     {
-        "text": "Please make a complete CI CD tutorial",
+        "text": "Please make a complete CI/CD tutorial",
     },
     {
-        "text": "Can you explain CI CD pipeline?",
+        "text": "Can you explain CI/CD pipeline?",
     },
 ]
 

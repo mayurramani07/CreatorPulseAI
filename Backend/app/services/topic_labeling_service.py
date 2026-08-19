@@ -1,6 +1,61 @@
+import re
+
 import numpy as np
 
 from app.services.embedding_service import generate_embeddings
+
+
+STOP_WORDS = {
+    "the",
+    "a",
+    "an",
+    "and",
+    "or",
+    "to",
+    "for",
+    "of",
+    "in",
+    "on",
+    "is",
+    "are",
+    "can",
+    "you",
+    "please",
+    "make",
+    "want",
+    "need",
+    "from",
+    "this",
+    "that",
+    "with",
+    "your",
+    "my",
+    "i",
+    "we",
+    "me",
+    "it",
+    "bring",
+    "give",
+    "get",
+    "would",
+    "could",
+    "should",
+    "course",
+    "courses",
+    "tutorial",
+    "tutorials",
+    "video",
+    "videos",
+    "teach",
+    "teaching",
+    "learn",
+    "learning",
+    "explain",
+    "explaining",
+    "full",
+    "complete",
+    "please",
+}
 
 
 def cosine_similarity(
@@ -29,10 +84,6 @@ def get_representative_comment(
     """
     Find the comment that is most representative
     of the entire topic group.
-
-    The representative comment is the comment whose
-    embedding is most similar to the average embedding
-    of the group.
     """
 
     if not comments:
@@ -45,7 +96,6 @@ def get_representative_comment(
 
     embeddings = generate_embeddings(texts)
 
-    # Calculate the center of the topic group.
     group_embedding = np.mean(
         embeddings,
         axis=0,
@@ -68,11 +118,51 @@ def get_representative_comment(
     return comments[best_index]
 
 
+def extract_topic_phrase(
+    text: str,
+) -> str:
+    """
+    Extract meaningful topic words from a
+    representative comment.
+    """
+
+    if not text:
+        return "Unknown"
+
+    text = text.lower()
+
+    # Preserve common compound technical terms.
+    text = text.replace("ci/cd", "cicd")
+    text = text.replace("ci-cd", "cicd")
+
+    words = re.findall(
+        r"[a-zA-Z0-9+#]+",
+        text,
+    )
+
+    topic_words = []
+
+    for word in words:
+
+        if word in STOP_WORDS:
+            continue
+
+        if len(word) < 2:
+            continue
+
+        topic_words.append(word)
+
+    if not topic_words:
+        return "General Topic"
+
+    return " ".join(topic_words[:3]).upper()
+
+
 def get_topic_label(
     comments: list[dict],
 ) -> str:
     """
-    Generate a topic label using the most
+    Generate a topic label using the
     representative comment.
     """
 
@@ -83,7 +173,9 @@ def get_topic_label(
     if not representative_comment:
         return "Unknown"
 
-    return representative_comment.get(
-        "text",
-        "Unknown",
+    return extract_topic_phrase(
+        representative_comment.get(
+            "text",
+            "",
+        )
     )
