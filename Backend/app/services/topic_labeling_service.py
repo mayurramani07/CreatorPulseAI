@@ -54,7 +54,6 @@ STOP_WORDS = {
     "explaining",
     "full",
     "complete",
-    "please",
 }
 
 
@@ -84,6 +83,9 @@ def get_representative_comment(
     """
     Find the comment that is most representative
     of the entire topic group.
+
+    The representative comment is the comment
+    closest to the average embedding of the group.
     """
 
     if not comments:
@@ -131,7 +133,7 @@ def extract_topic_phrase(
 
     text = text.lower()
 
-    # Preserve common compound technical terms.
+    # Preserve common technical compound terms.
     text = text.replace("ci/cd", "cicd")
     text = text.replace("ci-cd", "cicd")
 
@@ -155,7 +157,15 @@ def extract_topic_phrase(
     if not topic_words:
         return "General Topic"
 
-    return " ".join(topic_words[:3]).upper()
+    label = " ".join(
+        topic_words[:3]
+    ).upper()
+
+    # Restore human-readable formatting.
+    if label == "CICD":
+        return "CI/CD"
+
+    return label
 
 
 def get_topic_label(

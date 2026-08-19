@@ -4,6 +4,7 @@ from app.services.demand_scoring_service import (
 
 from app.services.topic_labeling_service import (
     get_topic_label,
+    get_representative_comment,
 )
 
 
@@ -12,14 +13,6 @@ def build_topic_recommendations(
 ) -> list[dict]:
     """
     Build final ranked topic recommendations.
-
-    Each recommendation contains:
-    - topic label
-    - representative comment
-    - request count
-    - likes
-    - replies
-    - demand score
     """
 
     if not topic_groups:
@@ -39,26 +32,47 @@ def build_topic_recommendations(
             topic_key
         ]
 
-        topic_label = get_topic_label(
-            comments
+        # Use the MiniLM-selected representative comment.
+        representative_comment = (
+            get_representative_comment(comments)
         )
 
-        representative_comment = comments[0].get(
-            "text",
-            "",
+        topic_label = get_topic_label(
+            comments
         )
 
         recommendations.append(
             {
                 "topic": topic_label,
-                "representative_comment": representative_comment,
-                "request_count": result["request_count"],
-                "total_likes": result["total_likes"],
-                "total_replies": result["total_replies"],
-                "request_score": result["request_score"],
-                "like_score": result["like_score"],
-                "reply_score": result["reply_score"],
-                "demand_score": result["demand_score"],
+                "representative_comment": (
+                    representative_comment.get(
+                        "text",
+                        "",
+                    )
+                    if representative_comment
+                    else ""
+                ),
+                "request_count": (
+                    result["request_count"]
+                ),
+                "total_likes": (
+                    result["total_likes"]
+                ),
+                "total_replies": (
+                    result["total_replies"]
+                ),
+                "request_score": (
+                    result["request_score"]
+                ),
+                "like_score": (
+                    result["like_score"]
+                ),
+                "reply_score": (
+                    result["reply_score"]
+                ),
+                "demand_score": (
+                    result["demand_score"]
+                ),
             }
         )
 
