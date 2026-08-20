@@ -4,6 +4,11 @@ import "./App.css";
 
 import { analyzeVideo } from "./services/api";
 
+import StatsCard from "./components/StatsCard";
+
+import RecommendationCard from "./components/RecommendationCard";
+
+
 function App() {
   const [videoUrl, setVideoUrl] = useState("");
 
@@ -12,6 +17,7 @@ function App() {
   const [error, setError] = useState("");
 
   const [analysis, setAnalysis] = useState(null);
+
 
   function extractVideoId(url) {
     try {
@@ -34,8 +40,10 @@ function App() {
     }
   }
 
+
   async function handleAnalyze() {
     setError("");
+
     setAnalysis(null);
 
     const videoId = extractVideoId(videoUrl);
@@ -54,33 +62,40 @@ function App() {
       const data = await analyzeVideo(videoId);
 
       setAnalysis(data);
+
     } catch (err) {
       setError(
         err.message ||
         "Something went wrong while analyzing the video."
       );
+
     } finally {
       setLoading(false);
     }
   }
 
+
   return (
     <div className="app">
+
       <main className="hero">
 
         <div className="badge">
           AI-Powered Audience Intelligence
         </div>
 
+
         <h1>
           CreatorPulse
           <span>AI</span>
         </h1>
 
+
         <p className="hero-description">
           Turn YouTube comments into actionable
           content opportunities.
         </p>
+
 
         <div className="analyzer-card">
 
@@ -93,6 +108,7 @@ function App() {
             placeholder="Paste your YouTube video URL..."
           />
 
+
           <button
             onClick={handleAnalyze}
             disabled={loading}
@@ -104,40 +120,111 @@ function App() {
 
         </div>
 
+
         {error && (
           <p className="error-message">
             {error}
           </p>
         )}
 
+
         {analysis && (
-          <div className="result-preview">
+          <>
 
-            <h2>
-              Analysis Complete
-            </h2>
+            {/* ---------------------------------- */}
+            {/* Analysis Overview */}
+            {/* ---------------------------------- */}
 
-            <p>
-              Comments analyzed:{" "}
-              {analysis.processed_comments}
-            </p>
+            <div className="analysis-header">
 
-            <p>
-              Content requests:{" "}
-              {analysis.content_request_candidates}
-            </p>
+              <h2>
+                Audience Analysis
+              </h2>
 
-            <p>
-              Topics identified:{" "}
-              {analysis.topic_groups}
-            </p>
+              <p>
+                Here's what your audience is asking for.
+              </p>
 
-          </div>
+            </div>
+
+
+            {/* ---------------------------------- */}
+            {/* Statistics */}
+            {/* ---------------------------------- */}
+
+            <div className="stats-grid">
+
+              <StatsCard
+                label="Comments Analyzed"
+                value={analysis.processed_comments}
+                description="Comments processed by CreatorPulse"
+              />
+
+
+              <StatsCard
+                label="Content Requests"
+                value={
+                  analysis.content_request_candidates
+                }
+                description="Audience requests detected"
+              />
+
+
+              <StatsCard
+                label="Topics Identified"
+                value={analysis.topic_groups}
+                description="Distinct content opportunities"
+              />
+
+            </div>
+
+
+            {/* ---------------------------------- */}
+            {/* Content Opportunities */}
+            {/* ---------------------------------- */}
+
+            <div className="recommendations-section">
+
+              <div className="recommendations-header">
+
+                <h2>
+                  Top Content Opportunities
+                </h2>
+
+                <p>
+                  Topics your audience is most interested in.
+                </p>
+
+              </div>
+
+
+              <div className="recommendations-list">
+
+                {analysis.recommendations &&
+                  analysis.recommendations.map(
+                    (recommendation, index) => (
+
+                      <RecommendationCard
+                        key={`${recommendation.topic}-${index}`}
+                        rank={index + 1}
+                        recommendation={recommendation}
+                      />
+
+                    )
+                  )}
+
+              </div>
+
+            </div>
+
+          </>
         )}
 
       </main>
+
     </div>
   );
 }
+
 
 export default App;

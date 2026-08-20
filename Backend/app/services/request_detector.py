@@ -29,9 +29,7 @@ REQUEST_PROTOTYPES = [
 
 
 NON_REQUEST_PROTOTYPES = [
-    # ---------------------------------------------------------
-    # Praise / appreciation
-    # ---------------------------------------------------------
+
 
     "This video is amazing",
     "Great video",
@@ -49,9 +47,6 @@ NON_REQUEST_PROTOTYPES = [
     "Great work",
     "Excellent presentation",
 
-    # ---------------------------------------------------------
-    # Personal statements / stories
-    # ---------------------------------------------------------
 
     "I learned a lot from this",
     "I watched this video",
@@ -64,9 +59,6 @@ NON_REQUEST_PROTOTYPES = [
     "I am learning from your videos",
     "This topic is interesting",
 
-    # ---------------------------------------------------------
-    # Questions
-    # ---------------------------------------------------------
 
     "What is this",
     "What does this mean",
@@ -146,9 +138,7 @@ def detect_content_requests(
     if not comments:
         return []
 
-    # ---------------------------------------------------------
-    # 1. Prepare texts
-    # ---------------------------------------------------------
+
 
     comment_texts = [
         comment.text.strip()
@@ -160,9 +150,6 @@ def detect_content_requests(
     if not comment_texts:
         return []
 
-    # ---------------------------------------------------------
-    # 2. Create one embedding batch
-    # ---------------------------------------------------------
 
     all_texts = (
         REQUEST_PROTOTYPES
@@ -195,9 +182,7 @@ def detect_content_requests(
         request_count + non_request_count:
     ]
 
-    # ---------------------------------------------------------
-    # 3. Score every comment
-    # ---------------------------------------------------------
+
 
     scored_comments = []
 
@@ -213,9 +198,6 @@ def detect_content_requests(
         comment_embeddings,
     ):
 
-        # -----------------------------------------------------
-        # Request semantic similarity
-        # -----------------------------------------------------
 
         request_similarities = [
             cosine_similarity(
@@ -226,9 +208,6 @@ def detect_content_requests(
             in request_embeddings
         ]
 
-        # -----------------------------------------------------
-        # Non-request semantic similarity
-        # -----------------------------------------------------
 
         non_request_similarities = [
             cosine_similarity(
@@ -251,10 +230,6 @@ def detect_content_requests(
             request_score
             - non_request_score
         )
-
-        # -----------------------------------------------------
-        # Candidate decision
-        # -----------------------------------------------------
 
         is_request = (
             request_score
@@ -302,10 +277,6 @@ def detect_content_requests(
     if not scored_comments:
         return []
 
-    # ---------------------------------------------------------
-    # 4. Keep strongest semantic candidates
-    # ---------------------------------------------------------
-
     semantic_candidates = sorted(
         scored_comments,
         key=lambda item: (
@@ -318,9 +289,6 @@ def detect_content_requests(
     if not semantic_candidates:
         return []
 
-    # ---------------------------------------------------------
-    # 5. Normalize engagement
-    # ---------------------------------------------------------
 
     max_likes = max(
         item["like_count"]
@@ -332,9 +300,6 @@ def detect_content_requests(
         for item in semantic_candidates
     )
 
-    # ---------------------------------------------------------
-    # 6. Re-rank using engagement
-    # ---------------------------------------------------------
 
     results = []
 
@@ -377,10 +342,6 @@ def detect_content_requests(
         )
 
         results.append(item)
-
-    # ---------------------------------------------------------
-    # 7. Final ranking
-    # ---------------------------------------------------------
 
     return sorted(
         results,
