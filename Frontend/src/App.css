@@ -139,3 +139,45 @@ h1 span {
     font-size: 17px;
   }
 }
+.error-message {
+  margin-top: 18px;
+
+  color: #ff6b6b;
+
+  font-size: 14px;
+}
+
+.result-preview {
+  width: 100%;
+  max-width: 720px;
+
+  margin: 32px auto 0;
+
+  padding: 28px;
+
+  text-align: left;
+
+  background: #11121a;
+
+  border: 1px solid #292a38;
+
+  border-radius: 16px;
+}
+
+.result-preview h2 {
+  margin-bottom: 18px;
+
+  font-size: 22px;
+}
+
+.result-preview p {
+  margin-top: 8px;
+
+  color: #a9a9bd;
+}
+
+.analyzer-card button:disabled {
+  opacity: 0.6;
+
+  cursor: not-allowed;
+}

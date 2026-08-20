@@ -1,4 +1,6 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+
 
 from app.services.youtube_service import (
     get_video,
@@ -28,18 +30,20 @@ from app.services.recommendation_service import (
 )
 
 
-# =========================================================
-# FastAPI Application
-# =========================================================
-
 app = FastAPI(
     title="CreatorPulse AI"
 )
 
-
-# =========================================================
-# Health Check
-# =========================================================
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/health")
 async def health_check():
@@ -47,11 +51,6 @@ async def health_check():
     return {
         "status": "healthy"
     }
-
-
-# =========================================================
-# Get Video
-# =========================================================
 
 @app.get("/videos/{video_id}")
 async def read_video(
@@ -63,10 +62,6 @@ async def read_video(
     )
 
 
-# =========================================================
-# Get All Comments
-# =========================================================
-
 @app.get("/videos/{video_id}/comments")
 def get_video_comments(
     video_id: str,
@@ -77,10 +72,6 @@ def get_video_comments(
     )
 
 
-# =========================================================
-# Analyze Comments
-# =========================================================
-
 @app.get(
     "/videos/{video_id}/sample-comments"
 )
@@ -89,29 +80,14 @@ def get_sample_comments(
 ):
 
     try:
-
-        # -------------------------------------------------
-        # 1. Get total comment count
-        # -------------------------------------------------
-
         total_comments = get_comment_count(
             video_id
         )
-
-        # -------------------------------------------------
-        # 2. Determine collection size
-        # -------------------------------------------------
-
         collection_limit = (
             determine_sample_size(
                 total_comments
             )
         )
-
-        # -------------------------------------------------
-        # 3. Collect comments from YouTube
-        # -------------------------------------------------
-
         comments = get_comments(
             video_id,
             max_comments=collection_limit,
@@ -129,10 +105,6 @@ def get_sample_comments(
                 "recommendations": [],
             }
 
-        # -------------------------------------------------
-        # 4. Build sample
-        # -------------------------------------------------
-
         sampled_comments = build_sample(
             comments,
             sample_size=min(
@@ -140,24 +112,11 @@ def get_sample_comments(
                 len(comments),
             ),
         )
-
-        # -------------------------------------------------
-        # 5. Preprocess comments
-        # -------------------------------------------------
-
         processed_comments = (
             preprocess_comments(
                 sampled_comments
             )
         )
-
-        # -------------------------------------------------
-        # 6. Detect content requests
-        #
-        # Embedding model handles semantic
-        # request detection.
-        # -------------------------------------------------
-
         request_comments = (
             detect_content_requests(
                 processed_comments
@@ -186,24 +145,11 @@ def get_sample_comments(
             )
         )
 
-        # -------------------------------------------------
-        # 8. Demand scoring
-        #
-        # Pure Python.
-        #
-        # No additional LLM call.
-        # -------------------------------------------------
-
         recommendations = (
             build_topic_recommendations(
                 topic_groups
             )
         )
-
-        # -------------------------------------------------
-        # 9. Final response
-        # -------------------------------------------------
-
         return {
             "total_available": total_comments,
 
@@ -243,9 +189,6 @@ def get_sample_comments(
         )
 
 
-# =========================================================
-# Comment Count
-# =========================================================
 
 @app.get(
     "/videos/{video_id}/comment-count"
