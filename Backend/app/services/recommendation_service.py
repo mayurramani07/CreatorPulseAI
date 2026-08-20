@@ -17,19 +17,12 @@ def build_topic_recommendations(
     if not topic_groups:
         return []
 
-    # ---------------------------------------------------------
-    # Calculate demand scores
-    # ---------------------------------------------------------
-
     demand_results = calculate_demand_scores(
         topic_groups
     )
 
     recommendations = []
 
-    # ---------------------------------------------------------
-    # Build recommendations
-    # ---------------------------------------------------------
 
     for result in demand_results:
 

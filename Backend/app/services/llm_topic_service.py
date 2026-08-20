@@ -42,10 +42,6 @@ def group_request_comments(
     if not valid_comments:
         return {}
 
-    # ---------------------------------------------------------
-    # 1. Prepare comments
-    # ---------------------------------------------------------
-
     comment_data = []
 
     for comment in valid_comments:
@@ -69,10 +65,6 @@ def group_request_comments(
         comment_data,
         ensure_ascii=False,
     )
-
-    # ---------------------------------------------------------
-    # 2. Prompt
-    # ---------------------------------------------------------
 
     prompt = f"""
 You are the semantic topic classification engine
@@ -207,9 +199,6 @@ COMMENTS:
 {comments_json}
 """
 
-    # ---------------------------------------------------------
-    # 3. GPT-OSS call
-    # ---------------------------------------------------------
 
     response = client.chat.completions.create(
         model=MODEL_NAME,
@@ -220,15 +209,12 @@ COMMENTS:
             }
         ],
 
-        # JSON Object Mode
         response_format={
             "type": "json_object"
         },
 
-        # IMPORTANT FOR GPT-OSS + JSON
         reasoning_format="hidden",
 
-        # Keep reasoning low for classification.
         reasoning_effort="low",
 
         temperature=0,
@@ -236,9 +222,6 @@ COMMENTS:
         max_completion_tokens=4096,
     )
 
-    # ---------------------------------------------------------
-    # 4. Extract response
-    # ---------------------------------------------------------
 
     content = (
         response
@@ -249,10 +232,6 @@ COMMENTS:
 
     if not content:
         return {}
-
-    # ---------------------------------------------------------
-    # 5. Parse JSON
-    # ---------------------------------------------------------
 
     try:
 
@@ -270,9 +249,6 @@ COMMENTS:
 
         return {}
 
-    # ---------------------------------------------------------
-    # 6. Build comment lookup
-    # ---------------------------------------------------------
 
     comments_by_id = {
         str(
@@ -283,10 +259,6 @@ COMMENTS:
         ): comment
         for comment in valid_comments
     }
-
-    # ---------------------------------------------------------
-    # 7. Convert assignments → topic groups
-    # ---------------------------------------------------------
 
     grouped_comments: dict[
         str,
