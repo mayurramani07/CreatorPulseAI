@@ -1,0 +1,141 @@
+.app {
+  min-height: 100vh;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  padding: 40px 20px;
+
+  background:
+    radial-gradient(
+      circle at top,
+      #1a1b2e 0%,
+      #08090d 45%
+    );
+}
+
+.hero {
+  width: 100%;
+  max-width: 900px;
+
+  text-align: center;
+}
+
+.badge {
+  display: inline-block;
+
+  padding: 8px 16px;
+
+  margin-bottom: 24px;
+
+  border: 1px solid #303244;
+  border-radius: 999px;
+
+  background: #11121a;
+
+  color: #a9a9bd;
+
+  font-size: 13px;
+  font-weight: 500;
+}
+
+h1 {
+  font-size: clamp(52px, 8vw, 88px);
+  line-height: 1;
+  letter-spacing: -4px;
+
+  margin-bottom: 24px;
+}
+
+h1 span {
+  color: #8b5cf6;
+}
+
+.hero-description {
+  max-width: 600px;
+
+  margin: 0 auto 42px;
+
+  color: #9b9baa;
+
+  font-size: 20px;
+  line-height: 1.6;
+}
+
+.analyzer-card {
+  display: flex;
+  gap: 12px;
+
+  width: 100%;
+  max-width: 720px;
+
+  margin: 0 auto;
+
+  padding: 10px;
+
+  background: #11121a;
+
+  border: 1px solid #292a38;
+  border-radius: 16px;
+}
+
+.analyzer-card input {
+  flex: 1;
+
+  min-width: 0;
+
+  padding: 16px;
+
+  border: none;
+  outline: none;
+
+  background: transparent;
+
+  color: #ffffff;
+
+  font-size: 16px;
+}
+
+.analyzer-card input::placeholder {
+  color: #6f7080;
+}
+
+.analyzer-card button {
+  padding: 0 22px;
+
+  border: none;
+  border-radius: 10px;
+
+  background: #8b5cf6;
+
+  color: #ffffff;
+
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition: transform 0.2s ease;
+}
+
+.analyzer-card button:hover {
+  transform: translateY(-1px);
+}
+
+@media (max-width: 640px) {
+  .analyzer-card {
+    flex-direction: column;
+  }
+
+  .analyzer-card button {
+    min-height: 50px;
+  }
+
+  h1 {
+    letter-spacing: -2px;
+  }
+
+  .hero-description {
+    font-size: 17px;
+  }
+}
