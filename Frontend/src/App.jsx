@@ -131,10 +131,6 @@ function App() {
         {analysis && (
           <>
 
-            {/* ---------------------------------- */}
-            {/* Analysis Overview */}
-            {/* ---------------------------------- */}
-
             <div className="analysis-header">
 
               <h2>
@@ -146,11 +142,6 @@ function App() {
               </p>
 
             </div>
-
-
-            {/* ---------------------------------- */}
-            {/* Statistics */}
-            {/* ---------------------------------- */}
 
             <div className="stats-grid">
 
@@ -178,10 +169,6 @@ function App() {
 
             </div>
 
-
-            {/* ---------------------------------- */}
-            {/* Content Opportunities */}
-            {/* ---------------------------------- */}
 
             <div className="recommendations-section">
 
