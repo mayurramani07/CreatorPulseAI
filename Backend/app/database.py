@@ -34,3 +34,13 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def test_connection():
+    try:
+        with engine.connect() as connection:
+            print("PostgreSQL connection successful.")
+    except Exception as exc:
+        print(
+            f"PostgreSQL connection failed: {exc}"
+        )
