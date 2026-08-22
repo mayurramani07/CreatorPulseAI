@@ -5,11 +5,9 @@ function AnalysisSection({ analysis }) {
   return (
     <section
       id="insights"
-      className="mx-auto w-full max-w-7xl px-6 pb-24 lg:px-8"
+      className="mx-auto w-full max-w-7xl px-5 pb-24 pt-16 sm:px-6 lg:px-8"
     >
-
       <div className="mx-auto max-w-2xl text-center">
-
         <p className="text-xs font-medium uppercase tracking-[0.14em] text-violet-400/80">
           Audience Intelligence
         </p>
@@ -19,13 +17,11 @@ function AnalysisSection({ analysis }) {
         </h2>
 
         <p className="mt-4 text-sm leading-6 text-zinc-500">
-          Here's what your audience is asking for.
+          Turn audience feedback into clear content opportunities.
         </p>
-
       </div>
 
       <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-3">
-
         <StatsCard
           label="Comments Analyzed"
           value={analysis.processed_comments}
@@ -43,16 +39,10 @@ function AnalysisSection({ analysis }) {
           value={analysis.topic_groups}
           description="Distinct content opportunities"
         />
-
       </div>
 
-      <div
-        id="about"
-        className="mt-20"
-      >
-
+      <div className="mt-20">
         <div className="mb-7">
-
           <p className="text-xs font-medium uppercase tracking-[0.14em] text-violet-400/80">
             Content Opportunities
           </p>
@@ -64,25 +54,28 @@ function AnalysisSection({ analysis }) {
           <p className="mt-2 text-sm text-zinc-500">
             Ranked by audience demand.
           </p>
-
         </div>
 
-        <div className="flex flex-col gap-4">
-
-          {analysis.recommendations?.map(
-            (recommendation, index) => (
-              <RecommendationCard
-                key={`${recommendation.topic}-${index}`}
-                recommendation={recommendation}
-                rank={index + 1}
-              />
-            )
-          )}
-
-        </div>
-
+        {analysis.recommendations?.length > 0 ? (
+          <div className="flex flex-col gap-4">
+            {analysis.recommendations.map(
+              (recommendation, index) => (
+                <RecommendationCard
+                  key={`${recommendation.topic}-${index}`}
+                  recommendation={recommendation}
+                  rank={index + 1}
+                />
+              )
+            )}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] px-6 py-10 text-center">
+            <p className="text-sm text-zinc-500">
+              No content opportunities were identified.
+            </p>
+          </div>
+        )}
       </div>
-
     </section>
   );
 }

@@ -2,6 +2,9 @@ import { useState } from "react";
 
 import Hero from "../components/Hero";
 import AnalysisSection from "../components/AnalysisSection";
+import AnalysisLoader from "../components/AnalysisLoader";
+import ErrorMessage from "../components/ErrorMessage";
+import VideoInfo from "../components/VideoInfo";
 
 import { analyzeVideo } from "../services/api";
 
@@ -38,8 +41,16 @@ function Home() {
         error={error}
       />
 
-      {analysis && (
-        <AnalysisSection analysis={analysis} />
+      <ErrorMessage message={error} />
+
+      {loading && <AnalysisLoader />}
+
+      {analysis && !loading && (
+        <>
+          <VideoInfo analysis={analysis} />
+
+          <AnalysisSection analysis={analysis} />
+        </>
       )}
     </main>
   );
