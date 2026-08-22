@@ -1,7 +1,10 @@
 import StatsCard from "./StatsCard";
 import RecommendationCard from "./RecommendationCard";
+import DemandChart from "./DemandChart";
 
 function AnalysisSection({ analysis }) {
+  const recommendations = analysis?.recommendations ?? [];
+
   return (
     <section
       id="insights"
@@ -24,22 +27,26 @@ function AnalysisSection({ analysis }) {
       <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-3">
         <StatsCard
           label="Comments Analyzed"
-          value={analysis.processed_comments}
+          value={analysis?.processed_comments ?? 0}
           description="Comments processed by CreatorPulse"
         />
 
         <StatsCard
           label="Content Requests"
-          value={analysis.content_request_candidates}
+          value={analysis?.content_request_candidates ?? 0}
           description="Audience requests detected"
         />
 
         <StatsCard
           label="Topics Identified"
-          value={analysis.topic_groups}
+          value={analysis?.topic_groups ?? 0}
           description="Distinct content opportunities"
         />
       </div>
+
+      <DemandChart
+        recommendations={recommendations}
+      />
 
       <div className="mt-20">
         <div className="mb-7">
@@ -56,12 +63,12 @@ function AnalysisSection({ analysis }) {
           </p>
         </div>
 
-        {analysis.recommendations?.length > 0 ? (
+        {recommendations.length > 0 ? (
           <div className="flex flex-col gap-4">
-            {analysis.recommendations.map(
+            {recommendations.map(
               (recommendation, index) => (
                 <RecommendationCard
-                  key={`${recommendation.topic}-${index}`}
+                  key={`${recommendation?.topic ?? "topic"}-${index}`}
                   recommendation={recommendation}
                   rank={index + 1}
                 />
