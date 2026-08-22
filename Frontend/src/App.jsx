@@ -1,52 +1,22 @@
-import { useState } from "react";
-
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Navbar from "./components/Navbar";
-import Hero from "./components/Hero";
-import AnalysisSection from "./components/AnalysisSection";
-
-import { analyzeVideo } from "./services/api";
+import Home from "./pages/Home";
+import Engineering from "./pages/Engineering";
 
 function App() {
-  const [analysis, setAnalysis] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  async function handleAnalyze(videoId) {
-    setError("");
-    setAnalysis(null);
-
-    try {
-      setLoading(true);
-
-      const data = await analyzeVideo(videoId);
-
-      setAnalysis(data);
-    } catch (err) {
-      setError(
-        err.message ||
-          "Something went wrong while analyzing the video."
-      );
-    } finally {
-      setLoading(false);
-    }
-  }
-
   return (
-    <div className="min-h-screen bg-[#08090d] text-white">
-      <Navbar />
+    <BrowserRouter>
+      <div className="min-h-screen bg-[#08090d] text-white">
+        <Navbar />
+        <Routes>
+          <Route path="/" element={<Home />} />
 
-      <main>
-        <Hero
-          onAnalyze={handleAnalyze}
-          loading={loading}
-          error={error}
-        />
+          <Route path="/engineering"
+            element={<Engineering />} />
 
-        {analysis && (
-          <AnalysisSection analysis={analysis} />
-        )}
-      </main>
-    </div>
+        </Routes>
+      </div>
+    </BrowserRouter>
   );
 }
 
