@@ -5,6 +5,11 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Analysis, Recommendation, Video
 
+from app.services.cache_service import (
+    cache_analysis,
+    get_cached_analysis,
+)
+
 from app.services.youtube_service import (
     get_video,
     get_comments,
@@ -82,6 +87,13 @@ def get_sample_comments(
     db: Session = Depends(get_db),
 ):
     try:
+        cached_analysis = get_cached_analysis(
+            video_id
+        )
+
+        if cached_analysis is not None:
+            return cached_analysis
+
         total_comments = get_comment_count(
             video_id
         )
@@ -96,7 +108,7 @@ def get_sample_comments(
         )
 
         if not comments:
-            return {
+            result = {
                 "total_available": total_comments,
                 "total_collected": 0,
                 "sample_size": 0,
@@ -105,6 +117,13 @@ def get_sample_comments(
                 "topic_groups": 0,
                 "recommendations": [],
             }
+
+            cache_analysis(
+                video_id,
+                result,
+            )
+
+            return result
 
         sampled_comments = build_sample(
             comments,
@@ -300,7 +319,7 @@ def get_sample_comments(
 
         db.commit()
 
-        return {
+        result = {
             "total_available": total_comments,
 
             "total_collected": len(
@@ -325,6 +344,13 @@ def get_sample_comments(
 
             "recommendations": recommendations,
         }
+
+        cache_analysis(
+            video_id,
+            result,
+        )
+
+        return result
 
     except Exception as exc:
         db.rollback()
