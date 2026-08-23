@@ -1,6 +1,9 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session
 
+from app.database import get_db
+from app.models import Analysis, Recommendation, Video
 
 from app.services.youtube_service import (
     get_video,
@@ -45,18 +48,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.get("/health")
 async def health_check():
-
     return {
         "status": "healthy"
     }
+
 
 @app.get("/videos/{video_id}")
 async def read_video(
     video_id: str,
 ):
-
     return get_video(
         video_id
     )
@@ -66,7 +69,6 @@ async def read_video(
 def get_video_comments(
     video_id: str,
 ):
-
     return get_comments(
         video_id
     )
@@ -77,24 +79,23 @@ def get_video_comments(
 )
 def get_sample_comments(
     video_id: str,
+    db: Session = Depends(get_db),
 ):
-
     try:
         total_comments = get_comment_count(
             video_id
         )
-        collection_limit = (
-            determine_sample_size(
-                total_comments
-            )
+
+        collection_limit = determine_sample_size(
+            total_comments
         )
+
         comments = get_comments(
             video_id,
             max_comments=collection_limit,
         )
 
         if not comments:
-
             return {
                 "total_available": total_comments,
                 "total_collected": 0,
@@ -112,44 +113,193 @@ def get_sample_comments(
                 len(comments),
             ),
         )
-        processed_comments = (
-            preprocess_comments(
-                sampled_comments
-            )
+
+        processed_comments = preprocess_comments(
+            sampled_comments
         )
-        request_comments = (
-            detect_content_requests(
+
+        request_comments = detect_content_requests(
+            processed_comments
+        )
+
+        topic_groups = group_request_comments(
+            request_comments
+        )
+
+        recommendations = build_topic_recommendations(
+            topic_groups
+        )
+
+        video_response = get_video(
+            video_id
+        )
+
+        video_item = (
+            video_response
+            .get("items", [{}])[0]
+        )
+
+        snippet = video_item.get(
+            "snippet",
+            {}
+        )
+
+        statistics = video_item.get(
+            "statistics",
+            {}
+        )
+
+        db_video = (
+            db.query(Video)
+            .filter(
+                Video.youtube_video_id == video_id
+            )
+            .first()
+        )
+
+        if db_video is None:
+            db_video = Video(
+                youtube_video_id=video_id,
+                title=snippet.get(
+                    "title",
+                    "YouTube Video",
+                ),
+                channel_name=snippet.get(
+                    "channelTitle",
+                    "",
+                ),
+                thumbnail_url=(
+                    snippet
+                    .get("thumbnails", {})
+                    .get("high", {})
+                    .get("url", "")
+                ),
+                view_count=int(
+                    statistics.get(
+                        "viewCount",
+                        0,
+                    )
+                ),
+                like_count=int(
+                    statistics.get(
+                        "likeCount",
+                        0,
+                    )
+                ),
+                comment_count=int(
+                    statistics.get(
+                        "commentCount",
+                        total_comments,
+                    )
+                ),
+            )
+
+            db.add(db_video)
+
+        else:
+            db_video.title = snippet.get(
+                "title",
+                db_video.title,
+            )
+
+            db_video.channel_name = snippet.get(
+                "channelTitle",
+                db_video.channel_name,
+            )
+
+            db_video.thumbnail_url = (
+                snippet
+                .get("thumbnails", {})
+                .get("high", {})
+                .get(
+                    "url",
+                    db_video.thumbnail_url,
+                )
+            )
+
+            db_video.view_count = int(
+                statistics.get(
+                    "viewCount",
+                    db_video.view_count,
+                )
+            )
+
+            db_video.like_count = int(
+                statistics.get(
+                    "likeCount",
+                    db_video.like_count,
+                )
+            )
+
+            db_video.comment_count = int(
+                statistics.get(
+                    "commentCount",
+                    total_comments,
+                )
+            )
+
+        db.flush()
+
+        db_analysis = Analysis(
+            video_id=db_video.id,
+            processed_comments=len(
                 processed_comments
-            )
-        )
-
-        # -------------------------------------------------
-        # 7. Semantic topic grouping
-        #
-        # GPT-OSS-20B handles:
-        #
-        #   comments
-        #       ↓
-        #   semantic understanding
-        #       ↓
-        #   topic grouping
-        #       ↓
-        #   topic names
-        #
-        # One LLM call.
-        # -------------------------------------------------
-
-        topic_groups = (
-            group_request_comments(
+            ),
+            content_request_candidates=len(
                 request_comments
-            )
+            ),
+            topic_groups=len(
+                topic_groups
+            ),
         )
 
-        recommendations = (
-            build_topic_recommendations(
-                topic_groups
+        db.add(db_analysis)
+
+        db.flush()
+
+        for recommendation in recommendations:
+            db_recommendation = Recommendation(
+                analysis_id=db_analysis.id,
+                topic=recommendation.get(
+                    "topic",
+                    "Untitled Topic",
+                ),
+                demand_score=float(
+                    recommendation.get(
+                        "demand_score",
+                        0,
+                    )
+                ),
+                request_count=int(
+                    recommendation.get(
+                        "request_count",
+                        0,
+                    )
+                ),
+                total_likes=int(
+                    recommendation.get(
+                        "total_likes",
+                        0,
+                    )
+                ),
+                total_replies=int(
+                    recommendation.get(
+                        "total_replies",
+                        0,
+                    )
+                ),
+                representative_comment=(
+                    recommendation.get(
+                        "representative_comment",
+                        "",
+                    )
+                ),
             )
-        )
+
+            db.add(db_recommendation)
+
+        db.commit()
+
         return {
             "total_available": total_comments,
 
@@ -177,6 +327,7 @@ def get_sample_comments(
         }
 
     except Exception as exc:
+        db.rollback()
 
         print(
             f"Error analyzing video "
@@ -189,14 +340,12 @@ def get_sample_comments(
         )
 
 
-
 @app.get(
     "/videos/{video_id}/comment-count"
 )
 def comment_count(
     video_id: str,
 ):
-
     return {
         "video_id": video_id,
 
