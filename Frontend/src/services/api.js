@@ -1,6 +1,10 @@
-const API_BASE_URL = "http://127.0.0.1:8000";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 
-async function fetchJson(url, errorMessage) {
+
+async function fetchJson(
+  url,
+  errorMessage
+) {
   const response = await fetch(url);
 
   if (!response.ok) {
@@ -12,21 +16,27 @@ async function fetchJson(url, errorMessage) {
   return response.json();
 }
 
-export async function analyzeVideo(videoId) {
-  const [videoResponse, analysisResponse] =
-    await Promise.all([
-      fetchJson(
-        `${API_BASE_URL}/videos/${videoId}`,
-        "Unable to fetch video information"
-      ),
 
-      fetchJson(
-        `${API_BASE_URL}/videos/${videoId}/sample-comments`,
-        "Unable to analyze audience"
-      ),
-    ]);
+export async function analyzeVideo(
+  videoId
+) {
+  const [
+    videoResponse,
+    analysisResponse,
+  ] = await Promise.all([
+    fetchJson(
+      `${API_BASE_URL}/videos/${videoId}`,
+      "Unable to fetch video information"
+    ),
 
-  const videoItem = videoResponse?.items?.[0];
+    fetchJson(
+      `${API_BASE_URL}/videos/${videoId}/sample-comments`,
+      "Unable to analyze audience"
+    ),
+  ]);
+
+  const videoItem =
+    videoResponse?.items?.[0];
 
   if (!videoItem) {
     throw new Error(
@@ -34,14 +44,19 @@ export async function analyzeVideo(videoId) {
     );
   }
 
-  const snippet = videoItem.snippet ?? {};
-  const statistics = videoItem.statistics ?? {};
+  const snippet =
+    videoItem.snippet ?? {};
+
+  const statistics =
+    videoItem.statistics ?? {};
 
   return {
     ...analysisResponse,
 
     video: {
-      id: videoItem.id ?? videoId,
+      id:
+        videoItem.id ??
+        videoId,
 
       title:
         snippet.title ??
@@ -70,4 +85,24 @@ export async function analyzeVideo(videoId) {
       ),
     },
   };
+}
+
+
+export async function reanalyzeVideo(
+  videoId
+) {
+  const response = await fetch(
+    `${API_BASE_URL}/videos/${videoId}/reanalyze`,
+    {
+      method: "POST",
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Unable to re-analyze video (${response.status})`
+    );
+  }
+
+  return response.json();
 }
