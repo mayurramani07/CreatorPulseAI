@@ -1,7 +1,6 @@
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-
 from app.database import get_db
 from app.models import Analysis, Recommendation, Video
 
@@ -10,37 +9,20 @@ from app.services.cache_service import (
     get_cached_analysis,
 )
 
+from app.services.analysis_service import (
+    run_analysis,
+)
+
 from app.services.youtube_service import (
     get_video,
     get_comments,
     get_comment_count,
 )
 
-from app.services.sampling_service import (
-    build_sample,
-    determine_sample_size,
-)
-
-from app.services.preprocessing_service import (
-    preprocess_comments,
-)
-
-from app.services.request_detector import (
-    detect_content_requests,
-)
-
-from app.services.llm_topic_service import (
-    group_request_comments,
-)
-
-from app.services.recommendation_service import (
-    build_topic_recommendations,
-)
-
-
 app = FastAPI(
     title="CreatorPulse AI"
 )
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -92,31 +74,23 @@ def get_sample_comments(
         )
 
         if cached_analysis is not None:
+
+            print(
+                f"Redis cache HIT: {video_id}"
+            )
+
             return cached_analysis
 
-        total_comments = get_comment_count(
+        print(
+            f"Redis cache MISS: {video_id}"
+        )
+
+
+        result = run_analysis(
             video_id
         )
 
-        collection_limit = determine_sample_size(
-            total_comments
-        )
-
-        comments = get_comments(
-            video_id,
-            max_comments=collection_limit,
-        )
-
-        if not comments:
-            result = {
-                "total_available": total_comments,
-                "total_collected": 0,
-                "sample_size": 0,
-                "processed_comments": 0,
-                "content_request_candidates": 0,
-                "topic_groups": 0,
-                "recommendations": [],
-            }
+        if result["total_collected"] == 0:
 
             cache_analysis(
                 video_id,
@@ -125,29 +99,6 @@ def get_sample_comments(
 
             return result
 
-        sampled_comments = build_sample(
-            comments,
-            sample_size=min(
-                collection_limit,
-                len(comments),
-            ),
-        )
-
-        processed_comments = preprocess_comments(
-            sampled_comments
-        )
-
-        request_comments = detect_content_requests(
-            processed_comments
-        )
-
-        topic_groups = group_request_comments(
-            request_comments
-        )
-
-        recommendations = build_topic_recommendations(
-            topic_groups
-        )
 
         video_response = get_video(
             video_id
@@ -177,53 +128,65 @@ def get_sample_comments(
         )
 
         if db_video is None:
+
             db_video = Video(
                 youtube_video_id=video_id,
+
                 title=snippet.get(
                     "title",
                     "YouTube Video",
                 ),
+
                 channel_name=snippet.get(
                     "channelTitle",
                     "",
                 ),
+
                 thumbnail_url=(
                     snippet
                     .get("thumbnails", {})
                     .get("high", {})
                     .get("url", "")
                 ),
+
                 view_count=int(
                     statistics.get(
                         "viewCount",
                         0,
                     )
                 ),
+
                 like_count=int(
                     statistics.get(
                         "likeCount",
                         0,
                     )
                 ),
+
                 comment_count=int(
                     statistics.get(
                         "commentCount",
-                        total_comments,
+                        result["total_available"],
                     )
                 ),
             )
 
-            db.add(db_video)
+            db.add(
+                db_video
+            )
 
         else:
+
             db_video.title = snippet.get(
                 "title",
                 db_video.title,
             )
 
-            db_video.channel_name = snippet.get(
-                "channelTitle",
-                db_video.channel_name,
+            db_video.channel_name = (
+                snippet.get(
+                    "channelTitle",
+                    db_video.channel_name,
+                )
             )
 
             db_video.thumbnail_url = (
@@ -253,60 +216,75 @@ def get_sample_comments(
             db_video.comment_count = int(
                 statistics.get(
                     "commentCount",
-                    total_comments,
+                    result["total_available"],
                 )
             )
+
 
         db.flush()
 
         db_analysis = Analysis(
             video_id=db_video.id,
-            processed_comments=len(
-                processed_comments
-            ),
-            content_request_candidates=len(
-                request_comments
-            ),
-            topic_groups=len(
-                topic_groups
-            ),
+
+            processed_comments=result[
+                "processed_comments"
+            ],
+
+            content_request_candidates=result[
+                "content_request_candidates"
+            ],
+
+            topic_groups=result[
+                "topic_groups"
+            ],
         )
 
-        db.add(db_analysis)
+        db.add(
+            db_analysis
+        )
 
         db.flush()
 
-        for recommendation in recommendations:
+        for recommendation in result[
+            "recommendations"
+        ]:
+
             db_recommendation = Recommendation(
                 analysis_id=db_analysis.id,
+
                 topic=recommendation.get(
                     "topic",
                     "Untitled Topic",
                 ),
+
                 demand_score=float(
                     recommendation.get(
                         "demand_score",
                         0,
                     )
                 ),
+
                 request_count=int(
                     recommendation.get(
                         "request_count",
                         0,
                     )
                 ),
+
                 total_likes=int(
                     recommendation.get(
                         "total_likes",
                         0,
                     )
                 ),
+
                 total_replies=int(
                     recommendation.get(
                         "total_replies",
                         0,
                     )
                 ),
+
                 representative_comment=(
                     recommendation.get(
                         "representative_comment",
@@ -315,35 +293,12 @@ def get_sample_comments(
                 ),
             )
 
-            db.add(db_recommendation)
+            db.add(
+                db_recommendation
+            )
 
         db.commit()
 
-        result = {
-            "total_available": total_comments,
-
-            "total_collected": len(
-                comments
-            ),
-
-            "sample_size": len(
-                sampled_comments
-            ),
-
-            "processed_comments": len(
-                processed_comments
-            ),
-
-            "content_request_candidates": len(
-                request_comments
-            ),
-
-            "topic_groups": len(
-                topic_groups
-            ),
-
-            "recommendations": recommendations,
-        }
 
         cache_analysis(
             video_id,
@@ -352,7 +307,9 @@ def get_sample_comments(
 
         return result
 
+
     except Exception as exc:
+
         db.rollback()
 
         print(
@@ -372,6 +329,7 @@ def get_sample_comments(
 def comment_count(
     video_id: str,
 ):
+
     return {
         "video_id": video_id,
 

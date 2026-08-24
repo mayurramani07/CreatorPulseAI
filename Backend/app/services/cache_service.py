@@ -4,10 +4,15 @@ from app.redis_client import redis_client
 
 
 CACHE_TTL = 60 * 60
+CACHE_VERSION = "v1"
+
+
+def _cache_key(video_id: str) -> str:
+    return f"analysis:{CACHE_VERSION}:{video_id}"
 
 
 def get_cached_analysis(video_id: str):
-    key = f"analysis:{video_id}"
+    key = _cache_key(video_id)
 
     cached_data = redis_client.get(key)
 
@@ -21,7 +26,7 @@ def cache_analysis(
     video_id: str,
     analysis: dict,
 ):
-    key = f"analysis:{video_id}"
+    key = _cache_key(video_id)
 
     redis_client.setex(
         key,
@@ -36,6 +41,6 @@ def cache_analysis(
 def delete_cached_analysis(
     video_id: str,
 ):
-    key = f"analysis:{video_id}"
+    key = _cache_key(video_id)
 
     redis_client.delete(key)
