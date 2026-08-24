@@ -84,3 +84,4 @@ def run_analysis(video_id: str):
         "topic_groups": len(topic_groups),
         "recommendations": recommendations,
     }
+
